@@ -1,0 +1,3 @@
+- Add .dockerignore file
+- Remove the Greet service
+- 
