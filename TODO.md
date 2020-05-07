@@ -1,3 +1,3 @@
-- Add .dockerignore file
 - Remove the Greet service
-- 
+- Capture New metadata parameters
+- Add Twitch chat bot API
