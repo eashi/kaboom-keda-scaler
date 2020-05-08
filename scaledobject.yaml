@@ -9,3 +9,6 @@ spec:
   - type: external
     metadata:
       scalerAddress: kaboom.default:80
+      accessToken: twitch-access-token-here
+      twitchUserName: emadashi
+      channelName: emadashi
