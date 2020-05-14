@@ -6,6 +6,7 @@ spec:
   scaleTargetRef:
     deploymentName: myaspapp
   cooldownPeriod: 10
+  maxReplicaCount: 30
   triggers:
   - type: external
     metadata:

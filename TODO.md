@@ -1,3 +1,5 @@
 - Remove the Greet service
-- Capture New metadata parameters
-- Add Twitch chat bot API
+- Create multiple clients and metrics based on metrics metadata
+- Implement Close properly for Twitch Clients
+- Scale based on how many kaboom messages received (increments) OR based on how many 'o's in "kaboom". This applies to "fssst" as well.
+- Create unit tests

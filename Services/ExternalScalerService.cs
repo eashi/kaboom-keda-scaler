@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Externalscaler;
 using Google.Protobuf.WellKnownTypes;
@@ -58,14 +59,22 @@ namespace kaboom_scaler
         private void Client_OnMessageReceived(object sender, OnMessageReceivedArgs e)
         {
             _logger.LogInformation($"{DateTime.Now} Twitch message Received: {e.ChatMessage.Message}");
-            if (e.ChatMessage.Message.Contains("kaboom"))
-            {
-                state = 10;
-            }
-            if (e.ChatMessage.Message.Contains("fssst"))
-            {
-                state = 2;
-            }
+
+            var input = e.ChatMessage.Message;
+
+            // find any word in the message that is a "kaboom" no matter how many 'o' characters
+            // do the same for "fssst"
+            // and then find the difference and set the metric to the difference as long as it is not less than 0
+            var matchOfOs = Regex.Match(input, "kab([o]+)m");
+            var countOfOs = matchOfOs.Groups[1].Length;
+
+            var matchOfFst = Regex.Match(input, "f([s]+)t");
+            var countOfFst = matchOfFst.Groups[1].Length;
+
+            _logger.LogInformation($"{DateTime.Now} In Twitch message Received: state before:{state}, countOfOs:{countOfOs}, countOfFst: {countOfFst}.");
+
+
+            state = Math.Max(0, state + countOfOs - countOfFst);
         }
 
         public override Task<IsActiveResponse> IsActive(ScaledObjectRef request, ServerCallContext context)
