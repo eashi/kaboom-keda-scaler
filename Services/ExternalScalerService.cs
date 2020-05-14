@@ -15,8 +15,8 @@ namespace kaboom_scaler
     public class ExternalScalerService : ExternalScaler.ExternalScalerBase
     {
         private readonly ILogger<ExternalScalerService> _logger;
-        private TwitchClient _client ;
-        private int state;
+        static private TwitchClient _client;
+        static private int state = -1;
         public ExternalScalerService(ILogger<ExternalScalerService> logger)
         {
             _logger = logger;
@@ -24,26 +24,29 @@ namespace kaboom_scaler
 
         public override Task<Empty> New(NewRequest request, ServerCallContext context)
         {
-            _logger.LogInformation("New Is Called, the problem is between the screen and the chair!");
-            var accessToken = request.Metadata["accessToken"];
-            var twitchUserName = request.Metadata["twitchUserName"];
-            var channelName = request.Metadata["channelName"];
+            _logger.LogInformation($"{DateTime.Now} New Is Called, the problem is between the screen and the chair!");
+            if (_client == null)
+            {
+                var accessToken = request.Metadata["accessToken"];
+                var twitchUserName = request.Metadata["twitchUserName"];
+                var channelName = request.Metadata["channelName"];
 
-            _logger.LogInformation($"kaboom scaler new: twitchname:{twitchUserName}, channelName:{channelName}");
+                _logger.LogInformation($"kaboom scaler new: twitchname:{twitchUserName}, channelName:{channelName}");
 
-            ConnectionCredentials credentials = new ConnectionCredentials(twitchUserName, accessToken);
-	        var clientOptions = new ClientOptions
+                ConnectionCredentials credentials = new ConnectionCredentials(twitchUserName, accessToken);
+                var clientOptions = new ClientOptions
                 {
                     MessagesAllowedInPeriod = 750,
                     ThrottlingPeriod = TimeSpan.FromSeconds(30)
                 };
-            WebSocketClient customClient = new WebSocketClient(clientOptions);
-            _client = new TwitchClient(customClient);
-            _client.Initialize(credentials, channelName);
+                WebSocketClient customClient = new WebSocketClient(clientOptions);
+                _client = new TwitchClient(customClient);
+                _client.Initialize(credentials, channelName);
 
-            _client.OnMessageReceived += Client_OnMessageReceived;
-            _client.OnLog += Client_OnLog;
-            _client.Connect();
+                _client.OnMessageReceived += Client_OnMessageReceived;
+                _client.OnLog += Client_OnLog;
+                _client.Connect();
+            }
 
             return Task.FromResult(new Empty());
         }
@@ -54,20 +57,20 @@ namespace kaboom_scaler
         }
         private void Client_OnMessageReceived(object sender, OnMessageReceivedArgs e)
         {
-            _logger.LogInformation($"Twitch message Received: {e.ChatMessage.Message}");
-             if (e.ChatMessage.Message.Contains("kaboom"))
-             {
-                 state = 10;
-             }
-             if (e.ChatMessage.Message.Contains("fssst"))
-             {
-                 state = 2;
-             }
+            _logger.LogInformation($"{DateTime.Now} Twitch message Received: {e.ChatMessage.Message}");
+            if (e.ChatMessage.Message.Contains("kaboom"))
+            {
+                state = 10;
+            }
+            if (e.ChatMessage.Message.Contains("fssst"))
+            {
+                state = 2;
+            }
         }
 
         public override Task<IsActiveResponse> IsActive(ScaledObjectRef request, ServerCallContext context)
         {
-            return Task.FromResult(new IsActiveResponse(){Result = true});
+            return Task.FromResult(new IsActiveResponse() { Result = true });
         }
 
         public override Task<GetMetricSpecResponse> GetMetricSpec(ScaledObjectRef request, ServerCallContext context)
@@ -84,9 +87,9 @@ namespace kaboom_scaler
 
         public override Task<GetMetricsResponse> GetMetrics(GetMetricsRequest request, ServerCallContext context)
         {
-            _logger.LogInformation($"GetMetrics Called: state: {state}");
+            _logger.LogInformation($"{DateTime.Now} GetMetrics Called: state: {state}");
             var response = new GetMetricsResponse();
-            response.MetricValues.Add(new MetricValue{MetricName="kaboom", MetricValue_= state });
+            response.MetricValues.Add(new MetricValue { MetricName = "kaboom", MetricValue_ = state });
             return Task.FromResult<GetMetricsResponse>(response);
         }
 

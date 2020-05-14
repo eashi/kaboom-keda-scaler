@@ -5,10 +5,11 @@ metadata:
 spec:
   scaleTargetRef:
     deploymentName: myaspapp
+  cooldownPeriod: 10
   triggers:
   - type: external
     metadata:
       scalerAddress: kaboom.default:80
-      accessToken: twitch-access-token-here
+      accessToken: twitch-token-here
       twitchUserName: emadashi
       channelName: emadashi
