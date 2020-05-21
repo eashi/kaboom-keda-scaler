@@ -10,6 +10,7 @@ using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
+using Google.Protobuf.Collections;
 
 namespace kaboom_scaler
 {
@@ -17,6 +18,7 @@ namespace kaboom_scaler
     {
         private readonly ILogger<ExternalScalerService> _logger;
         static private TwitchClient _client;
+        static private MapField<string, string> _metricMetadata;
         static private int state = -1;
         public ExternalScalerService(ILogger<ExternalScalerService> logger)
         {
@@ -26,7 +28,14 @@ namespace kaboom_scaler
         public override Task<Empty> New(NewRequest request, ServerCallContext context)
         {
             _logger.LogInformation($"{DateTime.Now} New Is Called, the problem is between the screen and the chair!");
-            if (_client == null)
+
+            if(_metricMetadata != null && !_metricMetadata.Equals(request.Metadata)) 
+            {
+                _logger.LogInformation($"the _metricMetadata: {_metricMetadata} is not equal to request.Metadata: {request.Metadata}");
+            }
+
+            //If this is the first time New is called, or the metadata has changed
+            if (_metricMetadata == null || !_metricMetadata.Equals(request.Metadata))
             {
                 var accessToken = request.Metadata["accessToken"];
                 var twitchUserName = request.Metadata["twitchUserName"];
@@ -47,6 +56,10 @@ namespace kaboom_scaler
                 _client.OnMessageReceived += Client_OnMessageReceived;
                 _client.OnLog += Client_OnLog;
                 _client.Connect();
+
+                //Save the metadata so that we can compare it the the request next time to see if it changed.
+                _metricMetadata = request.Metadata;
+
             }
 
             return Task.FromResult(new Empty());

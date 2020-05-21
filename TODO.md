@@ -1,5 +1,5 @@
-- Remove the Greet service
 - Create multiple clients and metrics based on metrics metadata
 - Implement Close properly for Twitch Clients
-- Scale based on how many kaboom messages received (increments) OR based on how many 'o's in "kaboom". This applies to "fssst" as well.
+- Create a Docker Hub image + upload it on release tags + release Helm? (probably using GitHub Actions)
 - Create unit tests
+- Remove the Greet service
