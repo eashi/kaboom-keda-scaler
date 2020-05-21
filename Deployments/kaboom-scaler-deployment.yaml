@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: kaboom
+  name: kaboom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kaboom
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: kaboom
+    spec:
+      containers:
+      - image: eashi/kaboom:1.0.0
+        name: kaboom-scaler
+        imagePullPolicy: "IfNotPresent"
+        resources: {}
+        ports:
+          - containerPort: 80
+status: {}

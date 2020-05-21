@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: myaspapp
+  name: myaspapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myaspapp
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: myaspapp
+    spec:
+      containers:
+      - image: mcr.microsoft.com/dotnet/core/samples:aspnetapp
+        name: samples
+        resources: {}
+status: {}

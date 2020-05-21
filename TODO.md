@@ -1,5 +1,6 @@
+- Add documentation on the README.md file
 - Create multiple clients and metrics based on metrics metadata
+- Create release Helm? (probably using GitHub Actions)
 - Implement Close properly for Twitch Clients
-- Create a Docker Hub image + upload it on release tags + release Helm? (probably using GitHub Actions)
 - Create unit tests
 - Remove the Greet service
