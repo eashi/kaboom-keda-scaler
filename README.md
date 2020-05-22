@@ -6,7 +6,10 @@ This is not a serious scaler, it allows Twitch audience in the chat to scale dep
 
 ## How does it work?
 
-External KEDA scalers implement a gRPC service represented in the file `Protos/externalscaler.proto`. 
+External KEDA scalers have to implement a gRPC service represented in the file `Protos/externalscaler.proto`. This file originally can be found [here](https://github.com/kedacore/keda/blob/master/pkg/scalers/externalscaler/externalscaler.proto).
+
+You have to build docker image for this scaler so you can deploy it to the cluster. So invoke `docker build . -t kaboom-scaler` to build the image, and then it will be ready to be used in the deployments below. If you don't want to build the image, we have built an image that can be used directly, but you have to change it in the deployment file below in the `image` attribute. 
+You can find the image on Docker Hub: [eashi/kaboom:1.0.0](https://hub.docker.com/r/eashi/kaboom)
 
 You can deploy the external scaler by runnning `kubectl deploy -f Deployments/kaboom-scaler-deployment.yaml`, and then expose it on an internal service by executing `kubectl deploy -f Deployments/kaboom-scaler-service.yaml`.
 
