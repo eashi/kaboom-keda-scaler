@@ -25,6 +25,10 @@ namespace kaboom_scaler
             _logger = logger;
         }
 
+        // This method is called frequently from the KEDA runtime. It is supposed to create and prepare all the resources required 
+        // for the GetMetrics service method to be succesful.
+        // Here we create the irc channel client, and we keep it for the lifetime of the scaler.
+        // Ideally, there should be a separate client for every different metric, but we currently we support one. We will change this soon.
         public override Task<Empty> New(NewRequest request, ServerCallContext context)
         {
             _logger.LogInformation($"{DateTime.Now} New Is Called, the problem is between the screen and the chair!");
@@ -69,6 +73,9 @@ namespace kaboom_scaler
         {
             _logger.LogInformation($"{e.DateTime.ToString()}: {e.BotUsername} - {e.Data}");
         }
+
+        // This method is invoked on each new message coming from the channel. In it we set a variable that represents the scaling target so 
+        // it can be consumed by the GetMetrics method.
         private void Client_OnMessageReceived(object sender, OnMessageReceivedArgs e)
         {
             _logger.LogInformation($"{DateTime.Now} Twitch message Received: {e.ChatMessage.Message}");
@@ -107,6 +114,8 @@ namespace kaboom_scaler
 
         }
 
+        // This method is invoked frequently from KEDA to retrieve the metric. The value we return here is from the 'state' variable
+        // which is set by the Client_OnMessageReceived above.
         public override Task<GetMetricsResponse> GetMetrics(GetMetricsRequest request, ServerCallContext context)
         {
             _logger.LogInformation($"{DateTime.Now} GetMetrics Called: state: {state}");

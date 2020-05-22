@@ -31,8 +31,8 @@ namespace kaboom_scaler
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapGrpcService<GreeterService>();
-                endpoints.MapGrpcService<ExternalScalerService>();
+                endpoints.MapGrpcService<GreeterService>(); //TODO: this should be removed
+                endpoints.MapGrpcService<ExternalScalerService>(); //This is the endpoint for our scaler service.
 
                 endpoints.MapGet("/", async context =>
                 {
