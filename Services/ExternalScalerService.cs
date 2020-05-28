@@ -11,15 +11,15 @@ using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using Google.Protobuf.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace kaboom_scaler
 {
     public class ExternalScalerService : ExternalScaler.ExternalScalerBase
     {
         private readonly ILogger<ExternalScalerService> _logger;
-        static private TwitchClient _client;
-        static private MapField<string, string> _metricMetadata;
-        static private int state = -1;
+        static private Dictionary<string, ScaledObjectData> _scaledObjects = new Dictionary<string, ScaledObjectData>();
         public ExternalScalerService(ILogger<ExternalScalerService> logger)
         {
             _logger = logger;
@@ -31,15 +31,14 @@ namespace kaboom_scaler
         // Ideally, there should be a separate client for every different metric, but we currently we support one. We will change this soon.
         public override Task<Empty> New(NewRequest request, ServerCallContext context)
         {
-            _logger.LogInformation($"{DateTime.Now} New Is Called, the problem is between the screen and the chair!");
+            var scaledObjectKey = $"{request.ScaledObjectRef.Namespace}:{request.ScaledObjectRef.Name}";
 
-            if(_metricMetadata != null && !_metricMetadata.Equals(request.Metadata)) 
-            {
-                _logger.LogInformation($"the _metricMetadata: {_metricMetadata} is not equal to request.Metadata: {request.Metadata}");
-            }
+            _logger.LogInformation($"{DateTime.Now} New Is Called, key is: {scaledObjectKey}.");
+
+            _logger.LogInformation($"Keys and values in _scaledObjects: {String.Join(", ", _scaledObjects.Where(k => k.Key != "accessToken").Select(k => k.Key + "=" + k.Value.Metadata) )}");
 
             //If this is the first time New is called, or the metadata has changed
-            if (_metricMetadata == null || !_metricMetadata.Equals(request.Metadata))
+            if (!_scaledObjects.ContainsKey(scaledObjectKey) || !_scaledObjects[scaledObjectKey].Metadata.Equals(request.Metadata))
             {
                 var accessToken = request.Metadata["accessToken"];
                 var twitchUserName = request.Metadata["twitchUserName"];
@@ -54,15 +53,22 @@ namespace kaboom_scaler
                     ThrottlingPeriod = TimeSpan.FromSeconds(30)
                 };
                 WebSocketClient customClient = new WebSocketClient(clientOptions);
-                _client = new TwitchClient(customClient);
-                _client.Initialize(credentials, channelName);
+                var client = new TwitchClient(customClient);
+                client.Initialize(credentials, channelName);
 
-                _client.OnMessageReceived += Client_OnMessageReceived;
-                _client.OnLog += Client_OnLog;
-                _client.Connect();
+                client.OnMessageReceived += Client_OnMessageReceived;
+                client.OnLog += Client_OnLog;
+                client.Connect();
 
+                var scaledObjectData = new ScaledObjectData
+                {
+                    Metadata = request.Metadata,
+                    TwitchClient = client
+                };
+
+                //TODO: if key existed before, disconnect the previous client for proper dispose
                 //Save the metadata so that we can compare it the the request next time to see if it changed.
-                _metricMetadata = request.Metadata;
+                _scaledObjects[scaledObjectKey] = scaledObjectData;
 
             }
 
@@ -78,23 +84,39 @@ namespace kaboom_scaler
         // it can be consumed by the GetMetrics method.
         private void Client_OnMessageReceived(object sender, OnMessageReceivedArgs e)
         {
-            _logger.LogInformation($"{DateTime.Now} Twitch message Received: {e.ChatMessage.Message}");
+            var currentTwitchClient = (TwitchClient)sender;
+            ScaledObjectData scaledObjectData = null;
 
-            var input = e.ChatMessage.Message;
+            foreach (var scaledObjectValue in _scaledObjects.Values)
+            {
+                if (scaledObjectValue.TwitchClient == currentTwitchClient)
+                {
+                    scaledObjectData = scaledObjectValue;
+                    break;
+                }
+            }
 
-            // find any word in the message that is a "kaboom" no matter how many 'o' characters
-            // do the same for "fssst"
-            // and then find the difference and set the metric to the difference as long as it is not less than 0
-            var matchOfOs = Regex.Match(input, "kab([o]+)m");
-            var countOfOs = matchOfOs.Groups[1].Length;
+            if (scaledObjectData != null)
+            {
+                _logger.LogInformation($"{DateTime.Now} Twitch message Received: {e.ChatMessage.Message}");
 
-            var matchOfFst = Regex.Match(input, "f([s]+)t");
-            var countOfFst = matchOfFst.Groups[1].Length;
+                var input = e.ChatMessage.Message;
 
-            _logger.LogInformation($"{DateTime.Now} In Twitch message Received: state before:{state}, countOfOs:{countOfOs}, countOfFst: {countOfFst}.");
+                // find any word in the message that is a "kaboom" no matter how many 'o' characters
+                // do the same for "fssst"
+                // and then find the difference and set the metric to the difference as long as it is not less than 0
+                var matchOfOs = Regex.Match(input, "kab([o]+)m");
+                var countOfOs = matchOfOs.Groups[1].Length;
+
+                var matchOfFst = Regex.Match(input, "f([s]+)t");
+                var countOfFst = matchOfFst.Groups[1].Length;
+
+                _logger.LogInformation($"{DateTime.Now} In Twitch message Received: state before:{scaledObjectData.State}, countOfOs:{countOfOs}, countOfFst: {countOfFst}.");
 
 
-            state = Math.Max(0, state + countOfOs - countOfFst);
+                scaledObjectData.State = Math.Max(0, scaledObjectData.State + countOfOs - countOfFst);
+            }
+
         }
 
         public override Task<IsActiveResponse> IsActive(ScaledObjectRef request, ServerCallContext context)
@@ -118,9 +140,14 @@ namespace kaboom_scaler
         // which is set by the Client_OnMessageReceived above.
         public override Task<GetMetricsResponse> GetMetrics(GetMetricsRequest request, ServerCallContext context)
         {
-            _logger.LogInformation($"{DateTime.Now} GetMetrics Called: state: {state}");
+            var scaledObjectKey = $"{request.ScaledObjectRef.Namespace}:{request.ScaledObjectRef.Name}";
+
+            var scaledObjectData = _scaledObjects[scaledObjectKey];
+
+            //TODO: maybe it's better to check if it is not null and act accordingly
+            _logger.LogInformation($"{DateTime.Now} GetMetrics Called: state: {scaledObjectData.State}");
             var response = new GetMetricsResponse();
-            response.MetricValues.Add(new MetricValue { MetricName = "kaboom", MetricValue_ = state });
+            response.MetricValues.Add(new MetricValue { MetricName = "kaboom", MetricValue_ = scaledObjectData.State });
             return Task.FromResult<GetMetricsResponse>(response);
         }
 
